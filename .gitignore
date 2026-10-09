@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local tooling
+.vscode/
+.idea/
+.DS_Store
+
+# Test artifacts
+coverage/
+
+# Prisma local artifacts
+*.db

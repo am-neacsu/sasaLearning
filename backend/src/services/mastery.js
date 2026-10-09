@@ -1,0 +1,3 @@
+export function masteryBand(score){if(score<40)return 'Needs Practice';if(score<60)return 'Learning';if(score<75)return 'Getting There';if(score<90)return 'Strong';return 'Mastered'}
+export function nextMastery(previous, correct, difficulty=3){const weight=0.18+Math.min(Math.max(difficulty,1),5)*0.02;const target=correct?100:0;return Math.max(0,Math.min(100,previous+(target-previous)*weight))}
+export function chooseQuestions(questions, attempts=[], limit=10){const seen=new Set(attempts.map(a=>a.questionId));return [...questions].sort((a,b)=>(a.difficulty-3)**2-(b.difficulty-3)**2||a.id.localeCompare(b.id)).filter(q=>!seen.has(q.id)).slice(0,limit)}

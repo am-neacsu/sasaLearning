@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';test('retry payload should contain only incorrect question ids',()=>{const answers=[{questionId:'a',isCorrect:false},{questionId:'b',isCorrect:true}];assert.deepEqual(answers.filter(x=>!x.isCorrect).map(x=>x.questionId),['a'])});

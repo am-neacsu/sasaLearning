@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Student" ADD COLUMN     "currentStreak" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "lastActivityAt" TIMESTAMP(3),
+ADD COLUMN     "points" INTEGER NOT NULL DEFAULT 0;

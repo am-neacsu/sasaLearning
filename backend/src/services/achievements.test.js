@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{masteryBand}from'./mastery.js';test('achievement thresholds use supportive milestone language',()=>{assert.equal(masteryBand(39),'Needs Practice');assert.equal(masteryBand(90),'Mastered')});

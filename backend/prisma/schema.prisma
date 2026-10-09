@@ -1,0 +1,332 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PARENT
+  STUDENT
+  TEACHER
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TYPED_ANSWER
+  NUMERIC
+  TRUE_FALSE
+  MULTI_SELECT
+  WRITTEN
+  READING_COMPREHENSION
+  MULTI_PART
+}
+
+enum AssignmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+}
+
+enum AttemptSource {
+  HOMEWORK
+  PRACTICE
+  SMART_PRACTICE
+}
+
+model Family {
+  id        String     @id @default(cuid())
+  name      String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  users     User[]
+  students  Student[]
+  homework  Homework[]
+}
+
+model User {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  passwordHash        String
+  firstName           String
+  role                UserRole
+  familyId            String
+  family              Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  mustChangePassword  Boolean   @default(false)
+  resetTokenHash      String?
+  resetTokenExpiresAt DateTime?
+  emailVerifiedAt DateTime?
+  emailVerificationHash String?
+  emailVerificationExpiresAt DateTime?
+  student             Student?
+
+  @@index([familyId, role])
+}
+
+model Student {
+  id               String                @id @default(cuid())
+  userId           String                @unique
+  familyId         String
+  yearGroupId      String?
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  family           Family                @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  yearGroup        YearGroup?            @relation(fields: [yearGroupId], references: [id], onDelete: SetNull)
+  assignments      HomeworkAssignment[]
+  attempts         Attempt[]
+  practiceSessions PracticeSession[]
+  mastery          StudentSkillMastery[]
+  achievements     StudentAchievement[]
+  points           Int                   @default(0)
+  currentStreak    Int                   @default(0)
+  lastActivityAt   DateTime?
+  snapshots        LearningSnapshot[]
+
+  @@index([familyId])
+}
+
+model Curriculum {
+  id         String      @id @default(cuid())
+  name       String      @unique
+  yearGroups YearGroup[]
+}
+
+model YearGroup {
+  id           String     @id @default(cuid())
+  name         String
+  curriculumId String
+  curriculum   Curriculum @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  students     Student[]
+  questions    Question[]
+
+  @@unique([curriculumId, name])
+}
+
+model Subject {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  slug      String     @unique
+  topics    Topic[]
+  questions Question[]
+  homework  Homework[]
+  createdAt DateTime   @default(now())
+}
+
+model Topic {
+  id        String     @id @default(cuid())
+  name      String
+  subjectId String
+  subject   Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subtopics Subtopic[]
+  skills    Skill[]
+  questions Question[]
+
+  @@unique([subjectId, name])
+}
+
+model Subtopic {
+  id        String     @id @default(cuid())
+  name      String
+  topicId   String
+  topic     Topic      @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  skills    Skill[]
+  questions Question[]
+
+  @@unique([topicId, name])
+}
+
+model Skill {
+  id         String                @id @default(cuid())
+  name       String
+  topicId    String
+  subtopicId String?
+  topic      Topic                 @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  subtopic   Subtopic?             @relation(fields: [subtopicId], references: [id], onDelete: SetNull)
+  questions  QuestionSkill[]
+  mastery    StudentSkillMastery[]
+
+  @@unique([topicId, name])
+}
+
+model Question {
+  id                String             @id @default(cuid())
+  subjectId         String
+  topicId           String
+  subtopicId        String?
+  yearGroupId       String?
+  type              QuestionType
+  text              String
+  correctAnswer     Json
+  options           Json?
+  explanation       String?
+  hint              String?
+  workedSolution    String?
+  difficulty        Int
+  points            Int                @default(1)
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  subject           Subject            @relation(fields: [subjectId], references: [id])
+  topic             Topic              @relation(fields: [topicId], references: [id])
+  subtopic          Subtopic?          @relation(fields: [subtopicId], references: [id], onDelete: SetNull)
+  yearGroup         YearGroup?         @relation(fields: [yearGroupId], references: [id], onDelete: SetNull)
+  skills            QuestionSkill[]
+  homeworkQuestions HomeworkQuestion[]
+  homeworkAnswers   HomeworkAnswer[]
+  attempts          Attempt[]
+
+  @@index([subjectId, difficulty, isActive])
+}
+
+model QuestionSkill {
+  questionId String
+  skillId    String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  skill      Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([questionId, skillId])
+}
+
+model Homework {
+  id           String               @id @default(cuid())
+  familyId     String
+  subjectId    String
+  title        String
+  description  String?
+  instructions String?
+  assignedDate DateTime             @default(now())
+  dueDate      DateTime?
+  family       Family               @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  subject      Subject              @relation(fields: [subjectId], references: [id])
+  questions    HomeworkQuestion[]
+  assignments  HomeworkAssignment[]
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@index([familyId])
+}
+
+model HomeworkQuestion {
+  homeworkId String
+  questionId String
+  order      Int
+  homework   Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  question   Question @relation(fields: [questionId], references: [id])
+
+  @@id([homeworkId, questionId])
+}
+
+model HomeworkAssignment {
+  id          String           @id @default(cuid())
+  homeworkId  String
+  studentId   String
+  status      AssignmentStatus @default(NOT_STARTED)
+  startedAt   DateTime?
+  completedAt DateTime?
+  homework    Homework         @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  student     Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers     HomeworkAnswer[]
+
+  @@unique([homeworkId, studentId])
+  @@index([studentId, status])
+}
+
+model HomeworkAnswer {
+  id               String             @id @default(cuid())
+  assignmentId     String
+  questionId       String
+  answer           Json
+  isCorrect        Boolean?
+  timeSpentSeconds Int?
+  answeredAt       DateTime           @default(now())
+  assignment       HomeworkAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  question         Question           @relation(fields: [questionId], references: [id])
+
+  @@unique([assignmentId, questionId])
+}
+
+model PracticeSession {
+  id          String        @id @default(cuid())
+  studentId   String
+  source      AttemptSource
+  startedAt   DateTime      @default(now())
+  completedAt DateTime?
+  student     Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  attempts    Attempt[]
+}
+
+model Attempt {
+  id                String           @id @default(cuid())
+  studentId         String
+  questionId        String
+  practiceSessionId String?
+  source            AttemptSource
+  answer            Json
+  isCorrect         Boolean
+  difficulty        Int
+  attemptNumber     Int              @default(1)
+  timeSpentSeconds  Int?
+  hintUsed          Boolean          @default(false)
+  explanationViewed Boolean          @default(false)
+  createdAt         DateTime         @default(now())
+  student           Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  question          Question         @relation(fields: [questionId], references: [id])
+  practiceSession   PracticeSession? @relation(fields: [practiceSessionId], references: [id], onDelete: SetNull)
+
+  @@index([studentId, createdAt])
+  @@index([questionId])
+}
+
+model StudentSkillMastery {
+  id                   String    @id @default(cuid())
+  studentId            String
+  skillId              String
+  score                Float     @default(0)
+  lastPracticedAt      DateTime?
+  nextReviewAt         DateTime?
+  consecutiveCorrect   Int       @default(0)
+  consecutiveIncorrect Int       @default(0)
+  attemptCount         Int       @default(0)
+  updatedAt            DateTime  @updatedAt
+  student              Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  skill                Skill     @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, skillId])
+}
+
+model Achievement {
+  id                  String               @id @default(cuid())
+  name                String               @unique
+  description         String
+  points              Int                  @default(0)
+  studentAchievements StudentAchievement[]
+}
+
+model StudentAchievement {
+  id            String      @id @default(cuid())
+  studentId     String
+  achievementId String
+  awardedAt     DateTime    @default(now())
+  student       Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([studentId, achievementId])
+}
+
+model LearningSnapshot {
+  id                String   @id @default(cuid())
+  studentId         String
+  date              DateTime
+  questionsAnswered Int      @default(0)
+  correctAnswers    Int      @default(0)
+  accuracy          Float    @default(0)
+  minutesSpent      Int      @default(0)
+  student           Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
+  @@index([studentId, date])
+}

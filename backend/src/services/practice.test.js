@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{chooseQuestions}from'./mastery.js';test('practice session limit is deterministic',()=>{const qs=[{id:'a',difficulty:1},{id:'b',difficulty:3},{id:'c',difficulty:5}];assert.deepEqual(chooseQuestions(qs,[],2).map(q=>q.id),['b','a'])});
