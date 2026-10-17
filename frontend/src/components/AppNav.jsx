@@ -6,7 +6,7 @@ export default function AppNav({ parent = false }) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const links = parent
-    ? [['/parent','Overview'],['/parent/children','Children'],['/parent/homework/new','Create homework'],['/parent/questions','Question bank'],['/parent/questions/import','Import questions']]
+    ? [['/parent','Overview'],['/parent/children','Children'],['/parent/homework','Assigned homework'],['/parent/homework/new','Create homework'],['/parent/questions','Question bank'],['/parent/questions/import','Import questions']]
     : [['/','Home'],['/homework','Homework'],['/practice','Practice'],['/subjects','Subjects'],['/progress','Progress'],['/achievements','Achievements']];
   return <nav className="app-nav" aria-label="Main navigation">
     <Link className="nav-brand" to={parent ? '/parent' : '/'}><span className="mark">✦</span>BrightPath</Link>
