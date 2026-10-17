@@ -18,6 +18,10 @@ export default function ParentHomework() {
   const [importText, setImportText] = useState('');
   const [importPreview, setImportPreview] = useState(null);
   const [importBusy, setImportBusy] = useState(false);
+  const [selectionMode, setSelectionMode] = useState('manual');
+  const [questionCount, setQuestionCount] = useState(10);
+  const [history, setHistory] = useState({});
+  const [selecting, setSelecting] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -80,13 +84,33 @@ export default function ParentHomework() {
     });
   };
 
+  const loadHistory = async (studentIds) => {
+    if (!studentIds.length) return setHistory({});
+    try {
+      const response = await api.get('/questions/history', { params: { studentIds: studentIds.join(',') } });
+      setHistory(response.data.history || {});
+    } catch { setHistory({}); }
+  };
+
+  const selectRandomQuestions = async () => {
+    if (!form.subjectId || !form.studentIds.length) return setMessage('Choose a subject and at least one child first.');
+    setSelecting(true);
+    try {
+      const response = await api.post('/questions/select', { subjectId: form.subjectId, topicIds: form.topicIds, count: Number(questionCount), studentIds: form.studentIds });
+      setForm((current) => ({ ...current, questionIds: response.data.questions.map((question) => question.id) }));
+      setHistory(response.data.history || {});
+      setMessage(`Selected ${response.data.selected} of ${response.data.available} available questions.`);
+      if (response.data.selected < Number(questionCount)) setMessage(`Only ${response.data.selected} questions are available in the selected categories.`);
+    } catch (error) { setMessage(error.response?.data?.error || 'Could not select questions.'); }
+    finally { setSelecting(false); }
+  };
+
   const toggle = (field, id, checked) => {
-    setForm((current) => ({
-      ...current,
-      [field]: checked
-        ? [...current[field], id]
-        : current[field].filter((value) => value !== id),
-    }));
+    setForm((current) => {
+      const next = { ...current, [field]: checked ? [...current[field], id] : current[field].filter((value) => value !== id) };
+      if (field === 'studentIds') loadHistory(next.studentIds);
+      return next;
+    });
   };
 
   const previewImportedHomework = () => {
@@ -218,6 +242,11 @@ export default function ParentHomework() {
           <legend>
             Questions {form.topicIds.length > 0 && <span className="legend-note">from selected categories</span>}
           </legend>
+          <div className="question-selection-tools">
+            <label>Selection mode<select value={selectionMode} onChange={(event) => setSelectionMode(event.target.value)}><option value="manual">Choose manually</option><option value="random">Choose a number automatically</option></select></label>
+            {selectionMode === 'random' && <div className="random-selection"><label>Number of questions<input type="number" min="1" max={Math.max(1, visibleQuestions.length)} value={questionCount} onChange={(event) => setQuestionCount(event.target.value)} /></label><button type="button" onClick={selectRandomQuestions} disabled={selecting || !form.studentIds.length}>{selecting ? 'Selecting…' : 'Select questions'}</button></div>}
+          </div>
+          <div className="question-legend"><span className="question-status correct">✓ Correct previously</span><span className="question-status incorrect">! Incorrect previously</span><span className="question-status unanswered">○ Not answered</span></div>
           {visibleQuestions.length ? visibleQuestions.map((question) => (
             <label className="check question-choice" key={question.id}>
               <input
@@ -227,7 +256,7 @@ export default function ParentHomework() {
               />
               <span>
                 {question.text}
-                <small>{question.topic?.name || 'General'} · Difficulty {question.difficulty}</small>
+                <small>{question.topic?.name || 'General'} · Difficulty {question.difficulty} · <em className={`question-status ${history[question.id]?.toLowerCase() || 'unanswered'}`}>{history[question.id] === 'CORRECT' ? 'Correct previously' : history[question.id] === 'INCORRECT' ? 'Incorrect previously' : 'Not answered'}</em></small>
               </span>
             </label>
           )) : <p className="muted">No questions are available in these categories yet.</p>}
