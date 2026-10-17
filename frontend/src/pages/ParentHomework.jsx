@@ -94,6 +94,7 @@ export default function ParentHomework() {
       const parsed = JSON.parse(importText);
       if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') throw new Error('Use a homework object containing title and questions.');
       if (!parsed.title || !Array.isArray(parsed.questions) || !parsed.questions.length) throw new Error('Homework needs a title and at least one question.');
+      if (!form.studentIds.length) throw new Error('Select at least one child before previewing or importing.');
       setImportPreview(parsed);
       setMessage(`Preview ready: ${parsed.questions.length} question${parsed.questions.length === 1 ? '' : 's'}.`);
     } catch (error) {
