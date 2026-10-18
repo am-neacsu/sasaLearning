@@ -56,5 +56,15 @@ r.post('/select', async (req, res, next) => {
 });
 
 r.post('/', async (req, res, next) => { try { const x = schema.parse(req.body); const { skillIds, ...questionData } = x; const q = await prisma.question.create({ data: { ...questionData, skills: { create: skillIds.map((skillId) => ({ skillId })) } } }); res.status(201).json({ question: q }); } catch (e) { if (e instanceof z.ZodError) return res.status(400).json({ error: 'Invalid question data.', details: e.issues }); next(e); } });
+r.delete('/:id', async (req, res, next) => {
+  try {
+    const question = await prisma.question.findUnique({ where: { id: req.params.id }, include: { homeworkQuestions: true, homeworkAnswers: true, attempts: true } });
+    if (!question) return res.status(404).json({ error: 'Question not found.' });
+    if (question.homeworkQuestions.length || question.homeworkAnswers.length || question.attempts.length) return res.status(409).json({ error: 'This question is used by homework or learning history and cannot be deleted. Disable it instead.', canDisable: true });
+    await prisma.question.delete({ where: { id: question.id } });
+    res.json({ message: 'Question deleted.' });
+  } catch (e) { next(e); }
+});
+
 r.patch('/:id', async (req, res, next) => { try { const data = z.object({ isActive: z.boolean().optional(), text: z.string().min(1).optional(), explanation: z.string().optional(), hint: z.string().optional(), options: z.any().optional(), correctAnswer: z.any().optional(), difficulty: z.number().int().min(1).max(5).optional() }).parse(req.body); const q = await prisma.question.update({ where: { id: req.params.id }, data }); res.json({ question: q }); } catch (e) { if (e instanceof z.ZodError) return res.status(400).json({ error: 'Invalid question update.', details: e.issues }); next(e); } });
 export default r;
