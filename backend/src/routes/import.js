@@ -93,8 +93,9 @@ export async function findOrCreateCatalog(tx, row, cache = {}) {
 
 export async function createQuestion(tx, row, cache = {}) {
   const catalog = await findOrCreateCatalog(tx, row, cache);
+  const { skillIds: linkedSkillIds, ...catalogFields } = catalog;
   const { subject, topic, category, subtopic, skill, yearGroup, subjectId, topicId, subtopicId, skillIds, yearGroupId, ...question } = row;
-  return tx.question.create({ data: { ...question, ...catalog, skills: { create: catalog.skillIds.map((skillId) => ({ skillId })) } } });
+  return tx.question.create({ data: { ...question, ...catalogFields, skills: { create: linkedSkillIds.map((skillId) => ({ skillId })) } } });
 }
 
 router.post('/json', async (req, res, next) => {
