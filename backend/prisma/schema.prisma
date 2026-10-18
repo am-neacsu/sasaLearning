@@ -229,6 +229,8 @@ model HomeworkAssignment {
   status      AssignmentStatus @default(NOT_STARTED)
   startedAt   DateTime?
   completedAt DateTime?
+  isArchived  Boolean   @default(false)
+  archivedAt  DateTime?
   homework    Homework         @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
   student     Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
   answers     HomeworkAnswer[]
