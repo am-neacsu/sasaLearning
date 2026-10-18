@@ -136,7 +136,9 @@ export default function ParentHomework() {
       setImportPreview(null);
       setImportText('');
     } catch (error) {
-      setMessage(error.response?.data?.error || 'Could not import homework.');
+      const data = error.response?.data;
+      const details = data?.errors?.length ? data.errors.map((row) => `Question ${Number(row.index) + 1}: ${(row.issues || []).map((issue) => issue.message).join(', ')}`).join(' | ') : data?.detail;
+      setMessage(details || data?.error || 'Could not import homework.');
     } finally {
       setImportBusy(false);
     }

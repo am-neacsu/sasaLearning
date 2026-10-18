@@ -91,7 +91,7 @@ export async function findOrCreateCatalog(tx, row, cache = {}) {
   return { subjectId: subject.id, topicId: topic.id, subtopicId: subtopic?.id, yearGroupId: yearGroup?.id, skillIds: skills.map((skill) => skill.id) };
 }
 
-async function createQuestion(tx, row, cache) {
+export async function createQuestion(tx, row, cache = {}) {
   const catalog = await findOrCreateCatalog(tx, row, cache);
   const { subject, topic, category, subtopic, skill, yearGroup, subjectId, topicId, subtopicId, skillIds, yearGroupId, ...question } = row;
   return tx.question.create({ data: { ...question, ...catalog, skills: { create: catalog.skillIds.map((skillId) => ({ skillId })) } } });
@@ -111,7 +111,7 @@ router.post('/json', async (req, res, next) => {
       return output;
     }, { maxWait: 10000, timeout: 120000 });
     res.status(201).json({ inserted: created.length, message: 'Questions imported; missing catalog items were created automatically.' });
-  } catch (error) { next(error); }
+  } catch (error) { console.error('Homework JSON import failed:', error); res.status(400).json({ error: 'Homework import failed.', detail: error.message, code: error.code || undefined }); }
 });
 
 const homeworkSchema = z.object({
@@ -166,7 +166,7 @@ router.post('/homework-json', async (req, res, next) => {
       return homework;
     }, { maxWait: 10000, timeout: 120000 });
     res.status(201).json({ homework: result, importedQuestions: result.questions.length, message: 'Homework imported and assigned successfully.' });
-  } catch (error) { next(error); }
+  } catch (error) { console.error('Homework JSON import failed:', error); res.status(400).json({ error: 'Homework import failed.', detail: error.message, code: error.code || undefined }); }
 });
 
 export default router;
