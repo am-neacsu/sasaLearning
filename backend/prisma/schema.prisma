@@ -206,8 +206,10 @@ model Homework {
   assignments  HomeworkAssignment[]
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
+  isArchived   Boolean              @default(false)
+  archivedAt   DateTime?
 
-  @@index([familyId])
+  @@index([familyId, isArchived])
 }
 
 model HomeworkQuestion {
