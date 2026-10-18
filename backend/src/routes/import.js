@@ -95,6 +95,9 @@ export async function createQuestion(tx, row, cache = {}) {
   const catalog = await findOrCreateCatalog(tx, row, cache);
   const { skillIds: linkedSkillIds, ...catalogFields } = catalog;
   const { subject, topic, category, subtopic, skill, yearGroup, subjectId, topicId, subtopicId, skillIds, yearGroupId, ...question } = row;
+  const candidates = await tx.question.findMany({ where: { subjectId: catalogFields.subjectId, topicId: catalogFields.topicId, yearGroupId: catalogFields.yearGroupId ?? null, type: question.type, text: question.text }, include: { skills: true } });
+  const existing = candidates.find((candidate) => JSON.stringify(candidate.correctAnswer) === JSON.stringify(question.correctAnswer));
+  if (existing) return existing;
   return tx.question.create({ data: { ...question, ...catalogFields, skills: { create: linkedSkillIds.map((skillId) => ({ skillId })) } } });
 }
 
@@ -166,7 +169,7 @@ router.post('/homework-json', async (req, res, next) => {
       });
       return homework;
     }, { maxWait: 10000, timeout: 120000 });
-    res.status(201).json({ homework: result, importedQuestions: result.questions.length, message: 'Homework imported and assigned successfully.' });
+    res.status(201).json({ homeworkId: result.id, importedQuestions: result.questions.length, message: 'Homework imported and assigned successfully.' });
   } catch (error) { console.error('Homework JSON import failed:', error); res.status(400).json({ error: 'Homework import failed.', detail: error.message, code: error.code || undefined }); }
 });
 
