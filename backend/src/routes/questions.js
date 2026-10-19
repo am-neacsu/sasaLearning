@@ -56,6 +56,19 @@ r.post('/select', async (req, res, next) => {
 });
 
 r.post('/', async (req, res, next) => { try { const x = schema.parse(req.body); const { skillIds, ...questionData } = x; const q = await prisma.question.create({ data: { ...questionData, skills: { create: skillIds.map((skillId) => ({ skillId })) } } }); res.status(201).json({ question: q }); } catch (e) { if (e instanceof z.ZodError) return res.status(400).json({ error: 'Invalid question data.', details: e.issues }); next(e); } });
+r.post('/bulk-delete', async (req, res, next) => {
+  try {
+    const input = z.object({ questionIds: z.array(z.string()).min(1), force: z.boolean().default(false) }).parse(req.body);
+    const questions = await prisma.question.findMany({ where: { id: { in: input.questionIds } }, include: { homeworkQuestions: true, homeworkAnswers: true, attempts: true } });
+    const removable = questions.filter((q) => !q.homeworkQuestions.length && !q.homeworkAnswers.length && !q.attempts.length);
+    const protectedQuestions = questions.filter((q) => !removable.includes(q));
+    if (!input.force && protectedQuestions.length) return res.status(409).json({ error: `${protectedQuestions.length} question(s) are used by learning history.`, deleted: 0, protectedIds: protectedQuestions.map((q) => q.id), canForce: true });
+    if (removable.length) await prisma.question.deleteMany({ where: { id: { in: removable.map((q) => q.id) } } });
+    if (input.force && protectedQuestions.length) await prisma.question.updateMany({ where: { id: { in: protectedQuestions.map((q) => q.id) } }, data: { isActive: false } });
+    res.json({ deleted: removable.length, disabled: input.force ? protectedQuestions.length : 0, message: input.force ? 'Unused questions deleted; used questions were disabled to preserve history.' : 'Questions deleted.' });
+  } catch (e) { if (e instanceof z.ZodError) return res.status(400).json({ error: 'Invalid bulk question action.' }); next(e); }
+});
+
 r.delete('/:id', async (req, res, next) => {
   try {
     const question = await prisma.question.findUnique({ where: { id: req.params.id }, include: { homeworkQuestions: true, homeworkAnswers: true, attempts: true } });
