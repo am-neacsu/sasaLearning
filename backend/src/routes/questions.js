@@ -64,8 +64,16 @@ r.post('/bulk-delete', async (req, res, next) => {
     const protectedQuestions = questions.filter((q) => !removable.includes(q));
     if (!input.force && protectedQuestions.length) return res.status(409).json({ error: `${protectedQuestions.length} question(s) are used by learning history.`, deleted: 0, protectedIds: protectedQuestions.map((q) => q.id), canForce: true });
     if (removable.length) await prisma.question.deleteMany({ where: { id: { in: removable.map((q) => q.id) } } });
-    if (input.force && protectedQuestions.length) await prisma.question.updateMany({ where: { id: { in: protectedQuestions.map((q) => q.id) } }, data: { isActive: false } });
-    res.json({ deleted: removable.length, disabled: input.force ? protectedQuestions.length : 0, message: input.force ? 'Unused questions deleted; used questions were disabled to preserve history.' : 'Questions deleted.' });
+    if (input.force && protectedQuestions.length) {
+      for (const question of protectedQuestions) {
+        const snapshot = { id: question.id, text: question.text, type: question.type, correctAnswer: question.correctAnswer, options: question.options, explanation: question.explanation, difficulty: question.difficulty, points: question.points };
+        await prisma.homeworkAnswer.updateMany({ where: { questionId: question.id }, data: { questionSnapshot: snapshot, questionId: null } });
+        await prisma.attempt.updateMany({ where: { questionId: question.id }, data: { questionSnapshot: snapshot, questionId: null } });
+        await prisma.homeworkQuestion.deleteMany({ where: { questionId: question.id } });
+        await prisma.question.delete({ where: { id: question.id } });
+      }
+    }
+    res.json({ deleted: removable.length + (input.force ? protectedQuestions.length : 0), disabled: 0, message: input.force ? 'Selected questions permanently deleted; historical answers and attempts were preserved.' : 'Questions deleted.' });
   } catch (e) { if (e instanceof z.ZodError) return res.status(400).json({ error: 'Invalid bulk question action.' }); next(e); }
 });
 

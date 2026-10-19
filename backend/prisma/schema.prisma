@@ -217,7 +217,7 @@ model HomeworkQuestion {
   questionId String
   order      Int
   homework   Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
-  question   Question @relation(fields: [questionId], references: [id])
+  question   Question? @relation(fields: [questionId], references: [id], onDelete: SetNull)
 
   @@id([homeworkId, questionId])
 }
@@ -242,13 +242,14 @@ model HomeworkAssignment {
 model HomeworkAnswer {
   id               String             @id @default(cuid())
   assignmentId     String
-  questionId       String
+  questionId       String?
+  questionSnapshot Json?
   answer           Json
   isCorrect        Boolean?
   timeSpentSeconds Int?
   answeredAt       DateTime           @default(now())
   assignment       HomeworkAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  question         Question           @relation(fields: [questionId], references: [id])
+  question         Question?          @relation(fields: [questionId], references: [id], onDelete: SetNull)
 
   @@unique([assignmentId, questionId])
 }
@@ -266,7 +267,8 @@ model PracticeSession {
 model Attempt {
   id                String           @id @default(cuid())
   studentId         String
-  questionId        String
+  questionId        String?
+  questionSnapshot  Json?
   practiceSessionId String?
   source            AttemptSource
   answer            Json
@@ -278,7 +280,7 @@ model Attempt {
   explanationViewed Boolean          @default(false)
   createdAt         DateTime         @default(now())
   student           Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  question          Question         @relation(fields: [questionId], references: [id])
+  question          Question?        @relation(fields: [questionId], references: [id], onDelete: SetNull)
   practiceSession   PracticeSession? @relation(fields: [practiceSessionId], references: [id], onDelete: SetNull)
 
   @@index([studentId, createdAt])
